@@ -7,10 +7,20 @@ from tune_sklearn import TuneSearchCV
 spell_checker = pipeline(task="fill-mask", model="bert-base-uncased")
 
 # Sample data
-text_samples = ["I likke to reaad books.", "Thiss is a speling cheker.", "The quick brown fox jumped over the lazy dog."]
+text_samples = [
+    "I likke to reaad books.",
+    "Thiss is a speling cheker.",
+    "The quick brown fox jumped over the lazy dog.",
+]
 
 # Function to correct spelling
 def correct_spelling(text):
+    # Check if [MASK] token is present in the input text
+    if "[MASK]" not in text:
+        # If not present, add [MASK] token to the end of the text
+        text += " [MASK]"
+
+    # Use the fill-mask pipeline to correct spelling
     return spell_checker(text)[0]['sequence'].strip()
 
 # Streamlit UI
@@ -23,16 +33,21 @@ if st.button("Check Spelling"):
 
 # Tune hyperparameters
 if st.checkbox("Tune Hyperparameters"):
-    labeled_data = [("I like to read books.", "I likke to reaad books."),
-                    ("This is a spelling checker.", "Thiss is a speling cheker."),
-                    ("The quick brown fox jumped over the lazy dog.", "The quick brown fox jumped over the lazy dog.")]
+    labeled_data = [
+        ("I like to read books.", "I likke to reaad books."),
+        ("This is a spelling checker.", "Thiss is a speling cheker."),
+        (
+            "The quick brown fox jumped over the lazy dog.",
+            "The quick brown fox jumped over the lazy dog.",
+        ),
+    ]
 
     X_train, y_train = zip(*labeled_data)
 
     # Define the hyperparameter search space
     param_space = {
-        'model': ['bert-base-uncased', 'bert-large-uncased'],
-        'task': ['fill-mask', 'text-generation'],
+        "model": ["bert-base-uncased", "bert-large-uncased"],
+        "task": ["fill-mask", "text-generation"],
     }
 
     # Define the model to be tuned
@@ -51,3 +66,4 @@ if st.checkbox("Tune Hyperparameters"):
 st.markdown("**Sample Data:**")
 for sample in text_samples:
     st.write(sample)
+
