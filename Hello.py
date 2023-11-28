@@ -1,51 +1,53 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import streamlit as st
-from streamlit.logger import get_logger
+from transformers import pipeline
+from sklearn.metrics import accuracy_score
+from tune_sklearn import TuneSearchCV
 
-LOGGER = get_logger(__name__)
+# Load the spell checker model
+spell_checker = pipeline(task="fill-mask", model="bert-base-uncased")
 
+# Sample data
+text_samples = ["I likke to reaad books.", "Thiss is a speling cheker.", "The quick brown fox jumped over the lazy dog."]
 
-def run():
-    st.set_page_config(
-        page_title="Hello",
-        page_icon="👋",
-    )
+# Function to correct spelling
+def correct_spelling(text):
+    return spell_checker(text)[0]['sequence'].strip()
 
-    st.write("# Welcome to Streamlit! 👋")
+# Streamlit UI
+st.title("Spell Checker")
 
-    st.sidebar.success("Select a demo above.")
+text_input = st.text_area("Enter text:")
+if st.button("Check Spelling"):
+    corrected_text = correct_spelling(text_input)
+    st.markdown(f"**Corrected Text:** {corrected_text}")
 
-    st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
-    )
+# Tune hyperparameters
+if st.checkbox("Tune Hyperparameters"):
+    labeled_data = [("I like to read books.", "I likke to reaad books."),
+                    ("This is a spelling checker.", "Thiss is a speling cheker."),
+                    ("The quick brown fox jumped over the lazy dog.", "The quick brown fox jumped over the lazy dog.")]
 
+    X_train, y_train = zip(*labeled_data)
 
-if __name__ == "__main__":
-    run()
+    # Define the hyperparameter search space
+    param_space = {
+        'model': ['bert-base-uncased', 'bert-large-uncased'],
+        'task': ['fill-mask', 'text-generation'],
+    }
+
+    # Define the model to be tuned
+    tuned_model = pipeline(task="fill-mask", model="bert-base-uncased")
+
+    # Use TuneSearchCV for hyperparameter tuning
+    search = TuneSearchCV(tuned_model, param_space, n_jobs=-1, scoring="accuracy", cv=2)
+    search.fit(X_train, y_train)
+
+    # Display best hyperparameters and accuracy
+    st.markdown("**Best Hyperparameters:**")
+    st.write(search.best_params_)
+    st.markdown(f"**Best Accuracy:** {search.best_score_}")
+
+# Display sample data
+st.markdown("**Sample Data:**")
+for sample in text_samples:
+    st.write(sample)
